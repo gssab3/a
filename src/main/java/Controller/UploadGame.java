@@ -1,14 +1,18 @@
 package Controller;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
+import javax.imageio.ImageIO;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
@@ -21,12 +25,38 @@ import javax.servlet.http.Part;
 import model.ProductModel;
 import model.game;
 
+
+
 /**
  * Servlet implementation class AddGame
  */
 @WebServlet("/AddGame")
 @MultipartConfig()
 public class UploadGame extends HttpServlet {
+	
+	private boolean isValidImageFile(Part part) {
+	    try {
+	        InputStream is = part.getInputStream();
+	        byte[] bytes = new byte[4];
+	        is.read(bytes, 0, 4);
+	        is.close();
+
+	        // Magic numbers per JPEG (FF D8 FF) e PNG (89 50 4E 47)
+	        byte[] jpegMagic = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
+	        byte[] pngMagic = {(byte) 0x89, (byte) 0x50, (byte) 0x4E, (byte) 0x47};
+
+	        // Controlla se i primi byte corrispondono ai magic numbers
+	        if (Arrays.equals(Arrays.copyOfRange(bytes, 0, 3), jpegMagic) ||
+	            Arrays.equals(bytes, pngMagic)) {
+	            return true;
+	        } else {
+	            return false;
+	        }
+	    } catch (IOException e) {
+	        return false;
+	    }
+	}
+	
 	private static final long serialVersionUID = 1L;
 	static String SAVE_DIR = "img";
 	static ProductModel GameModels = new ProductModelDM();
@@ -69,17 +99,19 @@ public class UploadGame extends HttpServlet {
 		String message = "upload =\n";
 		if (request.getParts() != null && request.getParts().size() > 0) {
 			for (Part part : request.getParts()) {
-				fileName = extractFileName(part);
-			
-				if (fileName != null && !fileName.equals("")) {
-					part.write(savePath + File.separator + fileName);
-					g1.setImg(fileName);
-					
-					message = message + fileName + "\n";
-				} else {
-					request.setAttribute("error", "Errore: Bisogna selezionare almeno un file");
-				}
-			}
+		        if (isValidImageFile(part)) {
+		            fileName = extractFileName(part);
+		            if (fileName != null && !fileName.equals("")) {
+		                part.write(savePath + File.separator + fileName);
+		                g1.setImg(fileName);
+		                message = message + fileName + "\n";
+		            } else {
+		                request.setAttribute("error", "Errore: Bisogna selezionare almeno un file");
+		            }
+		        } else {
+		            request.setAttribute("error", "Errore: Il file caricato non è un'immagine valida");
+		        }
+		    }
 		}
 		
 		g1.setName(request.getParameter("nomeGame"));
@@ -108,13 +140,13 @@ public class UploadGame extends HttpServlet {
 	private String extractFileName(Part part) {
 		// content-disposition: form-data; name="file"; filename="file.txt"
 		String contentDisp = part.getHeader("content-disposition");
-		String[] items = contentDisp.split(";");
-		for (String s : items) {
-			if (s.trim().startsWith("filename")) {
-				return s.substring(s.indexOf("=") + 2, s.length() - 1);
-			}
-		}
-		return "";
+	    String[] items = contentDisp.split(";");
+	    for (String s : items) {
+	        if (s.trim().startsWith("filename")) {
+	            return s.substring(s.indexOf("=") + 2, s.length() - 1);
+	        }
+	    }
+	    return "";
 	}
 	
 

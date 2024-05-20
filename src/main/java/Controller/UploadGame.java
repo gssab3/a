@@ -54,7 +54,7 @@ public class UploadGame extends HttpServlet {
 	        }
 	    } catch (IOException e) {
 	        return false;
-	    }
+	    } 
 	}
 	
 	private static final long serialVersionUID = 1L;
